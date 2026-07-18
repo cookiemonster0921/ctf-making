@@ -1,0 +1,155 @@
+Broadcast - Solution Walkthrough
+==================================
+
+You have `challenge.json` containing:
+
+  e = 3
+  Three (n, c) pairs where c = m^3 mod n  and m is the flag as an integer
+
+This is the Håstad Broadcast Attack (1988), a classical attack against RSA
+when a small public exponent (here e = 3) is used to encrypt the same message
+to multiple recipients.
+
+You do not need to factor the moduli or know the private keys.  The attack
+works purely with the public information provided.
+
+
+step 1: understand what RSA with e = 3 means
+----------------------------------------------
+RSA encryption: c = m^e mod n
+
+With e = 3:   c = m^3 mod n
+
+The message m is the flag converted to an integer.
+
+If a single (n, c) pair were given, recovering m from m^3 mod n requires
+knowing the factorisation of n — computationally infeasible for 512-bit n.
+
+But THREE pairs are given, all for the same m.
+
+
+step 2: understand the Chinese Remainder Theorem (CRT)
+-------------------------------------------------------
+The CRT says: given pairwise coprime moduli n1, n2, n3 and remainders
+c1, c2, c3, there is a unique integer M in [0, n1·n2·n3) such that:
+
+    M ≡ c1 (mod n1)
+    M ≡ c2 (mod n2)
+    M ≡ c3 (mod n3)
+
+Since c_i = m^3 mod n_i, we have:
+
+    M = m^3 mod (n1·n2·n3)
+
+Here is the key insight: m is the flag as an integer, which is much smaller
+than any individual n_i.  So m < n_i for all i, which means m^3 < n_i^3 ≤
+n1·n2·n3.  Therefore the modular reduction mod (n1·n2·n3) has no effect, and:
+
+    M = m^3   exactly (no mod reduction)
+
+Taking the integer cube root of M gives m.
+
+
+step 3: apply CRT to find M
+-----------------------------
+The standard CRT formula:
+
+    N  = n1 * n2 * n3
+    N1 = N / n1,  N2 = N / n2,  N3 = N / n3
+
+    M = (c1 * N1 * modinv(N1, n1)
+       + c2 * N2 * modinv(N2, n2)
+       + c3 * N3 * modinv(N3, n3)) mod N
+
+where modinv(a, n) is the modular inverse of a modulo n.
+
+
+step 4: take the integer cube root
+------------------------------------
+Python's float arithmetic is not precise enough for 1500-bit integers.
+Use a binary-search integer cube root:
+
+    def icbrt(n):
+        if n == 0:
+            return 0
+        x = int(round(n ** (1/3)))
+        while (x + 1) ** 3 <= n:
+            x += 1
+        while x ** 3 > n:
+            x -= 1
+        return x
+
+
+step 5: decode to text
+------------------------
+    m_int = icbrt(M)
+    flag  = m_int.to_bytes((m_int.bit_length() + 7) // 8, 'big').decode()
+    print(flag)
+
+
+full solve script
+------------------
+    import json
+
+    def extended_gcd(a, b):
+        if a == 0:
+            return b, 0, 1
+        g, x, y = extended_gcd(b % a, a)
+        return g, y - (b // a) * x, x
+
+    def modinv(a, m):
+        _, x, _ = extended_gcd(a % m, m)
+        return x % m
+
+    def icbrt(n):
+        if n == 0:
+            return 0
+        x = int(round(n ** (1/3)))
+        while (x + 1) ** 3 <= n:
+            x += 1
+        while x ** 3 > n:
+            x -= 1
+        return x
+
+    data = json.load(open('challenge.json'))
+    keys = data['keys']
+    n = [k['n'] for k in keys]
+    c = [k['c'] for k in keys]
+
+    N  = n[0] * n[1] * n[2]
+    Ns = [N // ni for ni in n]
+    M  = sum(c[i] * Ns[i] * modinv(Ns[i], n[i]) for i in range(3)) % N
+
+    m  = icbrt(M)
+    assert m ** 3 == M, 'M is not a perfect cube — wrong approach'
+
+    flag = m.to_bytes((m.bit_length() + 7) // 8, 'big').decode()
+    print(flag)
+
+
+step 6: submit
+---------------
+The decoded string is the flag in CSEC{...} format.
+
+
+what just happened — the short version
+----------------------------------------
+Håstad's broadcast attack (Johan Håstad, 1988) shows that encrypting the
+same message to e recipients using the same public exponent e leaks the
+message completely, regardless of the key sizes.
+
+The attack works because:
+  1. CRT combines the e ciphertexts into m^e exactly (no modular reduction)
+     as long as the product of the moduli exceeds m^e
+  2. Taking the e-th root of an integer is easy (versus taking a modular root,
+     which requires the factorisation of n)
+
+This is why real RSA implementations add randomised padding (OAEP) before
+encryption: even if the same plaintext is encrypted to multiple recipients,
+the padded messages all differ, so their e-th powers mod the product of
+moduli are not the e-th power of the original message.
+
+In practice, a small exponent e = 3 is still used in some contexts for speed,
+but padding is non-negotiable.  The attack generalises to any e: with e
+ciphertexts and e different moduli, an attacker can recover m via CRT + e-th
+root, so padding is the only protection.

@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  lost-privileges:
+    build: .
+    container_name: lost-privileges
+    env_file:
+      - .env
+    ports:
+      - "9001:9001"
+    restart: unless-stopped

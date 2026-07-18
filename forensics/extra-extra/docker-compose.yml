@@ -1,0 +1,8 @@
+services:
+  extra-extra:
+    build: .
+    container_name: forensics-extra-extra
+    restart: always
+    env_file: [.env]
+    ports:
+      - "8093:8093"

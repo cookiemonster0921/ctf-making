@@ -1,0 +1,8 @@
+services:
+  noisy-neighbor:
+    build: .
+    container_name: forensics-noisy-neighbor
+    restart: always
+    env_file: [.env]
+    ports:
+      - "8092:8092"

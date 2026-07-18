@@ -1,0 +1,149 @@
+Palimpsest - Solution Walkthrough
+===================================
+
+You have a single file, challenge.txt, containing a string that looks like:
+
+    GNEXA52UNZ5C22CIMM2DKUKVPU7HKPCULFMTO6STNJEHA52UER3SK2DRJFXFSZSZ
+
+This was encoded through multiple successive layers. Your job is to identify
+each layer and reverse them in the right order. No key is required — all
+layers are deterministic public operations.
+
+This walkthrough explains how to recognise each layer.
+
+
+step 1: recognise the outermost layer
+---------------------------------------
+Look at the string carefully:
+  - Characters: only A-Z (uppercase) and digits 2-7, plus possible = at the end
+  - This is the Base32 alphabet (A-Z and digits 2-7, padded with =)
+  - Base64 uses A-Z, a-z, 0-9, +, / — this is NOT Base64 because there are no
+    lowercase letters, no +, no /
+  - Hex encoding uses only 0-9 and A-F — this string uses G-Z, so not hex
+
+Conclusion: the outermost layer is Base32. Decode it first:
+
+    python3 -c "
+    import base64
+    s = 'GNEXA52UNZ5C22CIMM2DKUKVPU7HKPCULFMTO6STNJEHA52UER3SK2DRJFXFSZSZ'
+    # Add = padding to make length a multiple of 8
+    s += '=' * ((8 - len(s) % 8) % 8)
+    print(base64.b32decode(s))
+    "
+
+Result: a bytes/string object. Write it down.
+
+
+step 2: look at what base32 decoding produced
+-----------------------------------------------
+After base32 decoding you might have something like:
+
+    b'...some mix of letters and symbols...'
+
+This does not look like the flag (no CSEC{ prefix visible), and it does not
+look like human-readable text. There are more layers to strip.
+
+Does the result look reversed or backwards? Try reversing it:
+
+    python3 -c "
+    import base64
+    s = 'GNEXA52UNZ5C22CIMM2DKUKVPU7HKPCULFMTO6STNJEHA52UER3SK2DRJFXFSZSZ'
+    s += '=' * ((8 - len(s) % 8) % 8)
+    step1 = base64.b32decode(s).decode()
+    step2 = step1[::-1]   # reverse
+    print(step2)
+    "
+
+The reversed result will look like a mix of printable ASCII characters
+(letters, digits, and symbols like !, #, $, *, etc.) but no clear pattern yet.
+
+
+step 3: recognise the next encoding layer
+------------------------------------------
+What you have after reversing looks like printable ASCII containing symbols
+beyond just letters and digits. This is a clue: standard base encodings
+(Base16/32/64) only use alphanumeric characters (plus + and / in Base64).
+The presence of !#$*+- style characters suggests Base85.
+
+Base85 (also called ASCII85 or RFC 1924 Base85) encodes 4 bytes as 5
+printable characters using a character set of 85 printable ASCII symbols.
+It is used internally in PDF, PostScript, and some data compression formats.
+
+Python has built-in Base85:
+
+    python3 -c "
+    import base64
+    s = 'GNEXA52UNZ5C22CIMM2DKUKVPU7HKPCULFMTO6STNJEHA52UER3SK2DRJFXFSZSZ'
+    s += '=' * ((8 - len(s) % 8) % 8)
+    step1 = base64.b32decode(s).decode()
+    step2 = step1[::-1]   # reverse
+    try:
+        step3 = base64.b85decode(step2)
+        print('Base85 decode worked:', step3)
+    except Exception as e:
+        print('Not yet:', e)
+    "
+
+If base85 decoding fails or gives garbage, the intermediate result still has
+one more layer before base85. If you look carefully, many of the letters in
+the reversed string are shifted from what you would expect — suggesting ROT13.
+
+
+step 4: try ROT13 before base85
+---------------------------------
+ROT13 rotates letters A-Z by 13 positions (A↔N, B↔O, ...). It only affects
+letters; digits and symbols pass through unchanged. Try applying ROT13 to
+the reversed string before base85 decoding:
+
+    python3 -c "
+    import base64, codecs
+    s = 'GNEXA52UNZ5C22CIMM2DKUKVPU7HKPCULFMTO6STNJEHA52UER3SK2DRJFXFSZSZ'
+    s += '=' * ((8 - len(s) % 8) % 8)
+    step1 = base64.b32decode(s).decode()
+    step2 = step1[::-1]          # reverse
+    step3 = codecs.decode(step2, 'rot_13')  # ROT13
+    step4 = base64.b85decode(step3)
+    print(step4.decode())
+    "
+
+This prints the flag.
+
+
+step 5: verify and submit
+--------------------------
+The decoded string starts with CSEC{ and ends with }. That is your flag.
+
+
+full decode script (all in one)
+---------------------------------
+    import base64, codecs
+
+    ciphertext = open('challenge.txt').readlines()[2].strip()  # third line
+    ciphertext += '=' * ((8 - len(ciphertext) % 8) % 8)
+
+    after_b32     = base64.b32decode(ciphertext).decode()
+    after_reverse = after_b32[::-1]
+    after_rot13   = codecs.decode(after_reverse, 'rot_13')
+    flag          = base64.b85decode(after_rot13).decode()
+
+    print(flag)
+
+
+what the layers were
+---------------------
+Encoding order (applied to the original flag):
+  1. Base85   — raw flag bytes → printable ASCII (unusual symbols included)
+  2. ROT13    — alphabetic characters shifted by 13
+  3. Reverse  — string reversed (destroys left-to-right readability)
+  4. Base32   — final output in A-Z + 2-7 (looks like an encoded value)
+
+Decoding order (what you did):
+  1. Base32 decode
+  2. Reverse
+  3. ROT13
+  4. Base85 decode → flag
+
+The obscurity comes from using Base85 (uncommon, not the first thing people
+try) combined with the reversal (easy to miss as a "layer") and ROT13 applied
+to Base85 output (which looks random, not like alphabetic text in need of
+rotation, so it's easy to overlook as the second layer).

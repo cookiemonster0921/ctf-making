@@ -1,0 +1,111 @@
+Noisy Neighbor - Solution Walkthrough
+======================================
+
+This challenge gives you a packet capture from a suspicious host. Among the
+mundane DNS traffic you will find a covert data exfiltration channel — the
+attacker was sending data out by encoding it in DNS query names. This
+technique is sometimes called "DNS tunnelling" or "DNS exfiltration".
+
+DNS is often overlooked by firewalls because it is required for normal
+internet operation, but the subdomain portion of a query name can carry
+arbitrary data. In this case, the attacker base32-encoded the secret and
+split it across several DNS queries.
+
+
+step 1: download the file
+--------------------------
+Visit http://<host>:8092/challenge.pcap and download the file.
+
+
+step 2a: find the suspicious traffic in Wireshark (GUI method)
+--------------------------------------------------------------
+1. Open challenge.pcap in Wireshark (https://www.wireshark.org/).
+2. Apply the display filter:  dns
+   This keeps only DNS packets.
+3. Scroll through and look at the "Info" column. Most queries are to known
+   domains (google.com, microsoft.com, etc.). But a handful of queries have
+   unusual subdomains — subdomains that look like random characters, not
+   human-readable hostnames.
+4. Click one of the suspicious packets and expand the "Domain Name System"
+   section in the packet detail pane.
+5. Look at the "Queries" → "Name" field. It will look like:
+       xxxxxxxx.exfil.corp
+   where xxxxxxxx is a chunk of base32-encoded data.
+6. To list only the suspicious queries, apply:
+       dns.qry.name contains "exfil.corp"
+7. Note down all the subdomain labels (the part before ".exfil.corp") in
+   the order they appear.
+
+
+step 2b: extract subdomains with tshark (CLI method)
+-----------------------------------------------------
+Install tshark (part of the Wireshark package) or Wireshark's CLI tools:
+
+    tshark -r challenge.pcap \
+           -Y 'dns.qry.name contains "exfil.corp"' \
+           -T fields -e dns.qry.name \
+        | sed 's/\.exfil\.corp//'
+
+This prints only the subdomain chunks, one per line, in packet order.
+
+Example output:
+    mfra
+    xqyd
+    m5xe
+    ...
+
+
+step 3: reconstruct and decode
+--------------------------------
+1. Concatenate all the subdomain chunks in the order they appear:
+
+    chunks = 'mfraxqydm5xe...'          # paste your collected chunks
+
+2. The chunks are in base32 (lower-case). Base32 uses characters A-Z and
+   2-7 (or their lower-case equivalents). Convert to upper-case and add
+   padding if needed:
+
+    import base64
+    raw = 'mfraxqydm5xe...'             # your concatenated string
+    upper = raw.upper()
+    # Add = padding to make length a multiple of 8
+    padded = upper + '=' * ((8 - len(upper) % 8) % 8)
+    flag = base64.b32decode(padded).decode()
+    print(flag)
+
+   Or as a one-liner in the terminal:
+
+    python3 -c "
+    import base64, sys
+    s = 'YOUR_CHUNKS_HERE'.upper()
+    s += '=' * ((8 - len(s) % 8) % 8)
+    print(base64.b32decode(s).decode())
+    "
+
+3. The decoded string is the flag in CSEC{...} format.
+
+
+step 4: submit
+---------------
+Copy the flag exactly and submit.
+
+
+what just happened — the short version
+----------------------------------------
+DNS queries are one of the oldest and most reliable data exfiltration methods
+because DNS traffic is almost never blocked (services need it to resolve
+hostnames) and the query names can be arbitrarily long.  To exfiltrate data,
+an attacker base32-encodes the data (because DNS labels must be ASCII), splits
+it into chunks short enough to fit in a subdomain label (DNS labels have a
+63-character limit), and sends each chunk as a query to a domain they control.
+The attacker's authoritative DNS server logs the incoming queries, concatenates
+the chunks, and decodes the data — never needing a direct TCP connection to
+the victim network.
+
+Base32 (not Base64) is used because DNS is case-insensitive and Base64 uses
+upper and lower-case letters, which can be lost in transit.  Base32 uses only
+A-Z and digits 2-7, which survive DNS case normalisation.
+
+Tools that detect DNS exfiltration look for: an unusually high volume of DNS
+queries to a single domain, queries with long or random-looking subdomain
+labels, and low TTLs combined with never-seen-before subdomains.

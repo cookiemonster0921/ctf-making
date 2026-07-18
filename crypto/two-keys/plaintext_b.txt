@@ -1,0 +1,1 @@
+OPERATIONAL MEMO: The encryption system uses a one-time pad with a randomly generated key. Under no circumstances should the same key be used more than once. Violation of this policy constitutes a critical security incident and must be reported immediately to the information security team without delay.

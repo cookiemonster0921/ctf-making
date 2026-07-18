@@ -1,0 +1,91 @@
+Static - Solution Walkthrough
+==============================
+
+This challenge gives you an audio file that sounds like radio static or white
+noise. The flag is not hidden in the audio content you hear — it is hidden in
+the VISUAL representation of the audio's frequency spectrum over time, called
+a spectrogram.
+
+A spectrogram shows which frequencies are present at each moment in time. When
+you look at this file's spectrogram, the flag appears as readable text drawn
+in frequencies the human ear perceives as noise.
+
+You do not need to know any audio engineering. You need either Audacity (free,
+GUI) or Python with two libraries.
+
+
+step 1: download the file
+--------------------------
+Visit http://<host>:8091/challenge.wav and download the file.
+
+
+step 2a: view the spectrogram in Audacity (GUI method)
+-------------------------------------------------------
+1. Download and install Audacity from https://www.audacityteam.org/ (free).
+2. File → Open → select challenge.wav.
+3. You will see the standard waveform view — it looks like noise.  That is
+   expected and a red herring.
+4. Click the small arrow/dropdown next to the track name (top-left of the
+   track).  A menu appears.
+5. Select "Spectrogram" from the menu.
+6. The view changes to a colour map of frequency vs. time.
+7. Look at the middle of the image in the 1000–8000 Hz frequency range.
+8. You will see the flag written as text.
+
+If the text is too small: View → Zoom In (Ctrl+1) to stretch the time axis,
+or drag the track's lower edge downward to make it taller.
+
+
+step 2b: view the spectrogram in Python (script method)
+--------------------------------------------------------
+Install dependencies once:
+
+    pip install numpy scipy matplotlib
+
+Then run:
+
+    python3 - <<'EOF'
+    from scipy.io import wavfile
+    import matplotlib.pyplot as plt
+
+    sr, data = wavfile.read('challenge.wav')
+    if data.ndim > 1:
+        data = data[:, 0]           # take left channel if stereo
+
+    fig, ax = plt.subplots(figsize=(16, 4))
+    ax.specgram(data, Fs=sr, NFFT=256, noverlap=128, cmap='inferno')
+    ax.set_ylim(0, 10000)           # focus on the flag's frequency band
+    ax.set_ylabel('Frequency (Hz)')
+    ax.set_xlabel('Time (s)')
+    plt.tight_layout()
+    plt.savefig('spectrogram.png', dpi=150)
+    print('Saved spectrogram.png')
+    EOF
+
+Open spectrogram.png.  The flag is visible as text in the image.
+
+
+step 3: read and submit the flag
+---------------------------------
+The text visible in the spectrogram is the flag in the format CSEC{...}.
+Copy it exactly (including curly braces) and submit.
+
+
+what just happened — the short version
+----------------------------------------
+The generate.py script renders the flag as a grayscale image (white text on
+black), then converts each pixel's brightness into the amplitude of a sine
+wave at the corresponding frequency and time.  Adding hundreds of such sine
+waves together produces audio that sounds like random noise because human
+hearing perceives overlapping frequencies as broadband hiss — but the
+amplitude pattern at each frequency encodes the original image.
+
+This technique (hiding information in a signal's frequency-time plane) is
+sometimes called "spectrogram steganography" and has appeared in CTF
+challenges, ARG puzzles, and even an easter egg in a Aphex Twin music track
+that was discovered by fans.
+
+The key insight for the challenge: audio has both a time-domain view (the
+waveform you normally see) and a frequency-time view (the spectrogram). Most
+people look at audio with their ears or as a waveform. Looking at the
+spectrogram is a less obvious step.

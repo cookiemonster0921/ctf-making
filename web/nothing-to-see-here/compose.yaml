@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    container_name: nothing-to-see-here
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8080:80"

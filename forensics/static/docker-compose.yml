@@ -1,0 +1,8 @@
+services:
+  static:
+    build: .
+    container_name: forensics-static
+    restart: always
+    env_file: [.env]
+    ports:
+      - "8091:8091"

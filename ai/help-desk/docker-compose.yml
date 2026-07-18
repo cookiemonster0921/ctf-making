@@ -1,0 +1,36 @@
+services:
+  ollama:
+    build: ./ollama
+    container_name: help-desk-ollama
+    restart: always
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q qwen2.5:1.5b"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    # No ports exposed to host on purpose -- players must only interact
+    # with the model via the web chat UI.
+
+  web:
+    build: ./web
+    container_name: help-desk-web
+    restart: always
+    env_file:
+      - .env
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      MODEL_NAME: qwen2.5:1.5b
+    ports:
+      - "8090:8090"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

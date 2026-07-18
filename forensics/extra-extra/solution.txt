@@ -1,0 +1,105 @@
+Extra, Extra - Solution Walkthrough
+=====================================
+
+This challenge gives you a ZIP archive containing what appears to be a
+collection of mundane company documents — meeting notes, a team roster, a
+budget summary, and a patch log.
+
+The flag is NOT inside any of the files. Instead it is hidden in the ZIP
+archive's own metadata: specifically in the archive comment field, which is
+an optional block of text that ZIP files can carry after the last file entry.
+Most archive managers display file contents but silently ignore the archive
+comment, which makes it a useful hiding spot.
+
+The archive comment contains the base64-encoded flag embedded in what looks
+like a version/build metadata string.
+
+
+step 1: download the file
+--------------------------
+Visit http://<host>:8093/challenge.zip and save challenge.zip.
+
+
+step 2: look inside the files (this is a dead end, but instructive)
+--------------------------------------------------------------------
+Open the ZIP with any archive program (7-Zip, WinZip, Archive Utility, unzip)
+and read the four files:
+  - meeting_notes_q3.txt
+  - team_roster.csv
+  - budget_summary.txt
+  - patch_log.txt
+
+They contain realistic-looking company documents. No hidden text, no
+unusual characters, nothing.  The flag is not here.
+
+This is intentional: the challenge is to look beyond the files themselves.
+
+
+step 3: check the archive metadata
+------------------------------------
+A ZIP file has a structure that includes both the file entries and a trailing
+block called the "end of central directory record" (EOCD) that can contain an
+optional comment up to 65535 bytes long.
+
+Method A — Python (one line):
+
+    python3 -c "import zipfile; print(zipfile.ZipFile('challenge.zip').comment.decode())"
+
+Method B — unzip:
+
+    unzip -z challenge.zip
+
+The -z flag tells unzip to print the archive comment.
+
+Method C — hex editor:
+Open the file in a hex editor (HxD, xxd, hexdump).  Jump to the last 100 or
+so bytes of the file.  The EOCD record begins with the signature 50 4B 05 06
+(PK\x05\x06).  After fixed-length fields the comment follows as ASCII text.
+
+All three methods reveal the same comment:
+
+    INTERNAL // BUILD: 20251015 // REV: Q1NFQ3t6...==
+
+The characters after "REV: " are a base64-encoded string.
+
+
+step 4: decode the base64
+--------------------------
+Copy the base64 string (everything after "REV: " up to the end) and decode:
+
+    python3 -c "
+    import base64
+    b64 = 'Q1NFQ3t6...'    # paste the full string here
+    print(base64.b64decode(b64).decode())
+    "
+
+Or:
+
+    echo 'Q1NFQ3t6...' | base64 -d
+
+The decoded output is the flag: CSEC{...}
+
+
+step 5: submit
+---------------
+Copy the flag and submit.
+
+
+what just happened — the short version
+----------------------------------------
+The ZIP format (defined in PKWARE's APPNOTE.TXT) includes an optional
+"file comment" for each archive entry and a separate "archive comment" for the
+ZIP file as a whole.  Standard archiving programs extract and display only
+file contents; the archive comment is usually displayed only when you ask for
+it explicitly (e.g., `unzip -z`).
+
+Hiding data in archive metadata instead of file content is a recognised
+technique in digital forensics and malware analysis.  Malicious software has
+been known to embed configuration data, encryption keys, or C2 addresses in
+ZIP and RAR archive comments precisely because most automated scanners read
+file bodies but ignore metadata fields.
+
+Base64 is used here as a second layer: the comment field stores arbitrary
+bytes, but base64 makes the encoding look like a plausible build hash or
+revision identifier, reducing the chance that a casual observer raises an
+eyebrow.
