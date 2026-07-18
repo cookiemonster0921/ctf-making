@@ -1,6 +1,4 @@
-# Techfest CTF 2026 Challenges
-
-Challenge repository for the 2026 Techfest CTF event run by the UTS Cyber Security Society.
+ctfs
 
 Each challenge is fully self-contained in its own directory with no dependencies on other challenges.
 
