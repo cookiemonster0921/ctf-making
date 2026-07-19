@@ -19,11 +19,13 @@ Commit the updated `challenge.txt` to your CTF platform.
 ## Notes for organizers
 
 - The flag is encoded through four successive layers:
-    1. **Base85** — encodes raw bytes as printable ASCII
+    1. **Base85 (ASCII85, `!-u`)** — encodes raw bytes as printable ASCII
     2. **ROT13**  — rotates alphabetic characters by 13 positions
     3. **Reverse** — reverses the entire character sequence
     4. **Base32** — produces the final A-Z/2-7 output in `challenge.txt`
 - No key is needed; all four operations are deterministic and key-free.
   The challenge is identifying what was applied and in what order.
+- Intended to be solved with **CyberChef**: From Base32 → Reverse → ROT13 → From Base85
+  (all default settings — Base85 alphabet `!-u` is the CyberChef default).
 - `generate.py` also contains a `decode()` function for organiser verification.
 - See `solution.txt` for the walkthrough.

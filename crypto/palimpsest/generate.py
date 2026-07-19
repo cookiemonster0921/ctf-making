@@ -2,7 +2,7 @@
 """
 Encode the flag through four successive layers:
 
-  1. Base85  — encodes arbitrary bytes as printable ASCII
+  1. Base85  — ASCII85 / Adobe variant (chars ! through u, the CyberChef default)
   2. ROT13   — rotates alphabetic characters by 13 positions
   3. Reverse — reverses the character sequence
   4. Base32  — final output (uppercase A-Z + digits 2-7, padded with =)
@@ -12,6 +12,9 @@ Run this script to regenerate challenge.txt whenever the flag changes:
     FLAG='CSEC{your_flag_here}' python3 generate.py
 
 Players receive challenge.txt and must identify and reverse all four layers.
+
+CyberChef recipe (in order):
+  From Base32  → Reverse → ROT13 → From Base85 (alphabet: !-u, default)
 """
 import base64
 import os
@@ -30,10 +33,11 @@ def rot13(s: str) -> str:
 
 
 def encode(flag: str) -> str:
-    step1 = base64.b85encode(flag.encode()).decode()   # Base85
-    step2 = rot13(step1)                               # ROT13
-    step3 = step2[::-1]                                # Reverse
-    step4 = base64.b32encode(step3.encode()).decode()  # Base32
+    # adobe=False omits the <~ ~> delimiters so output is plain ASCII85
+    step1 = base64.a85encode(flag.encode(), adobe=False).decode()  # Base85 (!-u)
+    step2 = rot13(step1)                                            # ROT13
+    step3 = step2[::-1]                                             # Reverse
+    step4 = base64.b32encode(step3.encode()).decode()               # Base32
     return step4
 
 
@@ -42,7 +46,7 @@ def decode(ciphertext: str) -> str:
     step1 = base64.b32decode(ciphertext).decode()
     step2 = step1[::-1]
     step3 = rot13(step2)
-    step4 = base64.b85decode(step3.encode()).decode()
+    step4 = base64.a85decode(step3.encode(), adobe=False).decode()
     return step4
 
 
