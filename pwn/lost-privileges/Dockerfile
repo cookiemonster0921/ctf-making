@@ -54,7 +54,7 @@ RUN useradd -m -s /bin/bash player \
 RUN mkdir -p /etc/sudoers.d
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 EXPOSE 9001
 

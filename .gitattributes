@@ -1,0 +1,31 @@
+# Ensure shell scripts and all text files that run inside Linux containers
+# always have LF line endings, regardless of the host OS.
+# Without this, Windows git clients convert LF→CRLF on checkout and the
+# container shebang line becomes #!/bin/bash\r which fails on Linux.
+
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.py        text eol=lf
+*.conf      text eol=lf
+*.html      text eol=lf
+*.php       text eol=lf
+*.sql       text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.json      text eol=lf
+*.txt       text eol=lf
+*.md        text eol=lf
+*.hex       text eol=lf
+*.env*      text eol=lf
+.gitignore  text eol=lf
+
+# Binary assets — never touch line endings
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.wav    binary
+*.pcap   binary
+*.zip    binary
+*.gz     binary
+*.tar    binary

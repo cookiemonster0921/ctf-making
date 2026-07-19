@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir numpy scipy Pillow
 WORKDIR /app
 COPY generate.py .
 COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 EXPOSE 8091
 ENTRYPOINT ["./entrypoint.sh"]

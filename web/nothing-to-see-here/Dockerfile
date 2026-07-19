@@ -6,7 +6,8 @@ COPY site/ /usr/local/apache2/htdocs/
 # Entrypoint script writes the flag file (from the FLAG env var) outside
 # the docroot at container start time.
 COPY docker-entrypoint.sh /usr/local/apache2/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/apache2/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/apache2/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/apache2/bin/docker-entrypoint.sh
 
 # NOTE: this is intentionally NOT "hardening" the server. The stock
 # httpd:2.4.49 image ships its <Directory /> block set to
