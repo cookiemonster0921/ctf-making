@@ -67,17 +67,17 @@ where modinv(a, n) is the modular inverse of a modulo n.
 step 4: take the integer cube root
 ------------------------------------
 Python's float arithmetic is not precise enough for 1500-bit integers.
-Use a binary-search integer cube root:
+Use a Newton-Raphson integer cube root:
 
     def icbrt(n):
         if n == 0:
             return 0
-        x = int(round(n ** (1/3)))
-        while (x + 1) ** 3 <= n:
-            x += 1
-        while x ** 3 > n:
-            x -= 1
-        return x
+        x = 1 << ((n.bit_length() + 2) // 3)
+        while True:
+            x1 = (2 * x + n // (x * x)) // 3
+            if x1 >= x:
+                return x
+            x = x1
 
 
 step 5: decode to text
@@ -85,6 +85,13 @@ step 5: decode to text
     m_int = icbrt(M)
     flag  = m_int.to_bytes((m_int.bit_length() + 7) // 8, 'big').decode()
     print(flag)
+
+
+cyberchef note
+---------------
+This challenge requires arbitrary-precision arithmetic (CRT on ~1536-bit
+numbers, then integer cube root). CyberChef does not support these operations.
+Use the Python script below.
 
 
 full solve script
@@ -104,12 +111,12 @@ full solve script
     def icbrt(n):
         if n == 0:
             return 0
-        x = int(round(n ** (1/3)))
-        while (x + 1) ** 3 <= n:
-            x += 1
-        while x ** 3 > n:
-            x -= 1
-        return x
+        x = 1 << ((n.bit_length() + 2) // 3)
+        while True:
+            x1 = (2 * x + n // (x * x)) // 3
+            if x1 >= x:
+                return x
+            x = x1
 
     data = json.load(open('challenge.json'))
     keys = data['keys']

@@ -7,13 +7,14 @@ Difficulty: Hard
 
 Players receive `challenge.json`. No server is required.
 
-To regenerate `challenge.json` after changing the flag (requires `sympy`):
+To regenerate `challenge.json` after changing the flag:
 
 ```bash
-pip install sympy
-# Edit .env to set your flag (max 40 characters), then:
+# Edit .env to set your flag (max 64 characters), then:
 python3 generate.py
 ```
+
+No external dependencies — uses a built-in Miller-Rabin primality test.
 
 ## Notes for organizers
 
@@ -25,5 +26,8 @@ python3 generate.py
 - **Flag length limit**: the flag as bytes must be < 512 bits (64 bytes).
   Typical flags of 25–40 characters are fine.
 - `generate.py` verifies the round-trip before writing the file.
+- **CyberChef note**: This challenge requires arbitrary-precision CRT and an
+  integer cube root on ~1536-bit numbers. CyberChef does not support these
+  operations. Solve with the Python script in `solution.txt`.
 - See `solution.txt` for the complete mathematical walkthrough and Python
   solve script.
