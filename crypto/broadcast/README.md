@@ -28,6 +28,6 @@ No external dependencies — uses a built-in Miller-Rabin primality test.
 - `generate.py` verifies the round-trip before writing the file.
 - **CyberChef note**: This challenge requires arbitrary-precision CRT and an
   integer cube root on ~1536-bit numbers. CyberChef does not support these
-  operations. Solve with the Python script in `solution.txt`.
-- See `solution.txt` for the complete mathematical walkthrough and Python
-  solve script.
+  operations. Use `solve.py` instead.
+- See `solution.txt` for the complete mathematical walkthrough.
+- See `solve.py` for the ready-to-run solve script (`python3 solve.py`).
