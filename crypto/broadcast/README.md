@@ -9,10 +9,12 @@ Players receive `challenge.json`. No server is required.
 
 To regenerate `challenge.json` after changing the flag:
 
-```bash
-# Edit .env to set your flag (max 64 characters), then:
-python3 generate.py
 ```
+# Edit .env to set your flag (max 64 characters), then:
+python generate.py
+```
+
+> Use `python` or `python3` depending on your system (both work).
 
 No external dependencies — uses a built-in Miller-Rabin primality test.
 
@@ -30,4 +32,4 @@ No external dependencies — uses a built-in Miller-Rabin primality test.
   integer cube root on ~1536-bit numbers. CyberChef does not support these
   operations. Use `solve.py` instead.
 - See `solution.txt` for the complete mathematical walkthrough.
-- See `solve.py` for the ready-to-run solve script (`python3 solve.py`).
+- See `solve.py` for the ready-to-run solve script (`python solve.py`).

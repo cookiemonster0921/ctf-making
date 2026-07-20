@@ -1,4 +1,6 @@
-ctfs
+# Techfest CTF 2026 Challenges
+
+Challenge repository for the 2026 Techfest CTF event run by the UTS Cyber Security Society.
 
 Each challenge is fully self-contained in its own directory with no dependencies on other challenges.
 
@@ -37,36 +39,68 @@ Each challenge is fully self-contained in its own directory with no dependencies
 
 ---
 
-## Setup
+## Requirements
+
+| Requirement | Windows | macOS | Linux |
+|---|---|---|---|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | ✅ | ✅ | ✅ |
+| Python 3.8+ | ✅ | ✅ | ✅ |
+| `curl` (for web challenge testing) | ✅ Win 10+ built-in | ✅ | ✅ |
+| `nc` / `ncat` (for PWN testing) | via [nmap](https://nmap.org/) or WSL | ✅ | ✅ |
+
+> **Windows users**: All `.sh` files in this repo are Docker **entrypoint scripts** — they
+> run *inside* Linux containers and are never executed directly on your machine.
+> You only ever need to run `docker compose` and `python` commands from your terminal.
+
+---
+
+## Setup (all platforms)
+
+**Step 1 — copy all `.env` files at once (cross-platform):**
+
+```
+python setup.py
+```
+
+This walks every challenge directory and copies `.env.example` → `.env`.
+Re-run with `--force` to overwrite existing `.env` files.
+
+**Step 2 — set your flags:**
+
+Open each `.env` file and replace the placeholder with your real flag:
+```
+FLAG=CSEC{your_flag_here}
+```
+
+---
 
 ### Docker challenges (PWN / WEB / AI / Forensics)
 
-Each Docker challenge is fully independent:
-
-```bash
-cd <category>/<challenge-name>/
-cp .env.example .env
-# Edit .env and set FLAG=CSEC{your_flag_here}
+```
+cd <category>/<challenge-name>
 docker compose up --build -d
 ```
 
 To stop:
-```bash
+```
 docker compose down
 ```
 
+> `docker compose` is identical on Windows, macOS, and Linux when Docker Desktop is installed.
+
+---
+
 ### Crypto challenges (no Docker)
 
-Each crypto challenge provides a `generate.py` that reads the flag from `.env`
-and writes the challenge artifact(s):
+Each crypto challenge has a `generate.py` that reads the flag from `.env` and
+writes the challenge artifact(s). Distribute those files to players.
 
-```bash
-cd crypto/<challenge-name>/
-cp .env.example .env
-# Edit .env and set FLAG=CSEC{your_flag_here}
-python3 generate.py
-# Commit the generated artifact files and distribute them to players
 ```
+cd crypto/<challenge-name>
+python generate.py
+```
+
+> Use `python` or `python3` depending on your system. No external packages required.
 
 ---
 
@@ -87,6 +121,6 @@ blockchain, custom binary protocol, and more).
 ## Notes
 
 - `.env` files containing real flag values are excluded from version control via `.gitignore`.
-- Use `.env.example` as the template when setting up each challenge.
-- Each challenge has a `solution.txt` with a beginner-friendly walkthrough — keep this
+- Use `.env.example` as the template, or run `python setup.py` to copy all at once.
+- Each challenge has a `solution.txt` with a full walkthrough — keep this
   out of players' hands during the event.

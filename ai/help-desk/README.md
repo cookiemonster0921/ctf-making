@@ -5,9 +5,27 @@ Difficulty: Medium
 
 ## Setup
 
+From the repo root, run `python setup.py` to copy all `.env` files at once,
+or do it manually for this challenge:
+
+**macOS / Linux**
 ```bash
 cp .env.example .env
-# edit .env and set FLAG=CSEC{...}
+```
+
+**Windows (Command Prompt)**
+```cmd
+copy .env.example .env
+```
+
+**Windows (PowerShell)**
+```powershell
+Copy-Item .env.example .env
+```
+
+Then edit `.env` and set `FLAG=CSEC{...}`, and start the stack:
+
+```
 docker compose up --build -d
 ```
 
@@ -17,7 +35,7 @@ reachable directly.
 
 Bringing the stack down:
 
-```bash
+```
 docker compose down
 ```
 

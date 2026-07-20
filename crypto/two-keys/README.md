@@ -12,10 +12,12 @@ Players receive three files:
 
 To regenerate all three files after changing the flag:
 
-```bash
-# Edit .env to set your flag, then:
-python3 generate.py
 ```
+# Edit .env to set your flag, then:
+python generate.py
+```
+
+> Use `python` or `python3` depending on your system (both work).
 
 Note: running `generate.py` also regenerates the key, so the hex files change
 even if the flag does not. Commit all three generated files to your CTF platform.

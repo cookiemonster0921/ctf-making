@@ -9,10 +9,12 @@ Players receive `challenge.txt`. No server is required.
 
 To regenerate `challenge.txt` after changing the flag:
 
-```bash
-# Edit .env to set your flag, then:
-python3 generate.py
 ```
+# Edit .env to set your flag, then:
+python generate.py
+```
+
+> Use `python` or `python3` depending on your system (both work).
 
 Commit the updated `challenge.txt` to your CTF platform.
 
